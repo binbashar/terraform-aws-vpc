@@ -912,7 +912,7 @@ resource "aws_route" "private_nat_gateway" {
 }
 
 resource "aws_route" "private_ipv6_egress" {
-  count = var.enable_ipv6 ? length(var.private_subnets) : 0
+  count = var.create_vpc && var.enable_ipv6 ? length(var.private_subnets) : 0
 
   route_table_id              = element(aws_route_table.private.*.id, count.index)
   destination_ipv6_cidr_block = "::/0"
@@ -987,6 +987,25 @@ resource "aws_route_table_association" "public" {
 
   subnet_id      = element(aws_subnet.public.*.id, count.index)
   route_table_id = aws_route_table.public[0].id
+}
+
+####################
+# Customer Gateways
+####################
+resource "aws_customer_gateway" "this" {
+  for_each = var.customer_gateways
+
+  bgp_asn    = each.value["bgp_asn"]
+  ip_address = each.value["ip_address"]
+  type       = "ipsec.1"
+
+  tags = merge(
+    {
+      Name = format("%s-%s", var.name, each.key)
+    },
+    var.tags,
+    var.customer_gateway_tags,
+  )
 }
 
 ##############
